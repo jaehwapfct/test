@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PFCT 사이버펑크 네온 이펙터 </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Dependencies for Post-processing -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/DigitalGlitch.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/GlitchPass.js"></script>
+    
+    <!-- Data block for saving/loading state -->
+    <script id="preset-data" type="application/json">
+        null
+    </script>
+
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #0d0c1d; color: #e0e0e0; }
+        .neon-text { text-shadow: 0 0 5px rgba(76, 209, 255, 0.7), 0 0 40px rgba(255, 49, 160, 0.7); }
+        .control-panel { background-color: rgba(18, 18, 29, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); max-height: 85vh; overflow-y: auto; }
+        input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 5px; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: #4cd1ff; cursor: pointer; border-radius: 50%; border: 2px solid #0d0c1d; box-shadow: 0 0 10px #4cd1ff, 0 0 5px #ff31a0; }
+        .custom-file-upload { border: 2px dashed rgba(255, 255, 255, 0.3); display: inline-block; padding: 1rem 2rem; cursor: pointer; transition: all 0.3s; }
+        .custom-file-upload:hover { background-color: rgba(76, 209, 255, 0.1); border-color: #4cd1ff; }
+        #canvas-container canvas { width: 100% !important; height: 100% !important; cursor: grab; }
+        #canvas-container canvas:active { cursor: grabbing; }
+    </style>
+</head>
+<body class="w-full min-h-screen flex flex-col items-center justify-center p-4">
+    
+    <button id="download-button" class="fixed top-4 right-4 z-50 bg-pink-500 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:bg-pink-600 active:scale-95 transition-all duration-200 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+        HTML로 다운로드
+    </button>
+
+    <div class="w-full max-w-screen-2xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl md:text-5xl font-bold neon-text">대한민국 사이버펑크 네온 이펙터 v15</h1>
+            <p class="text-lg text-gray-400 mt-2">당신의 이미지를 살아있는 네온 아트로 만드세요.</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-4">
+            <main id="canvas-container" class="w-full lg:w-3/4 flex-grow bg-black rounded-lg shadow-2xl overflow-hidden relative border-2 border-purple-500/30 min-h-[60vh] lg:min-h-0">
+                <div id="upload-prompt" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                     <svg class="w-24 h-24 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <h2 class="text-2xl font-semibold text-gray-500">이미지를 여기에 업로드 하세요</h2>
+                    <p class="text-gray-600">드래그: 회전 | 우클릭+드래그: 이동 | 휠: 줌</p>
+                </div>
+            </main>
+
+            <aside class="w-full lg:w-1/4 control-panel p-4 md:p-6 rounded-lg shadow-lg">
+                <h3 class="text-2xl font-bold mb-6 border-b-2 border-pink-500/50 pb-2">컨트롤 패널</h3>
+                
+                <div class="mb-6">
+                    <label for="imageLoader" class="custom-file-upload rounded-lg text-center w-full">
+                        <span class="font-bold text-lg">🖼️ 파일 선택</span>
+                    </label>
+                    <input type="file" id="imageLoader" name="imageLoader" class="hidden" accept="image/*"/>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Global Settings -->
+                    <div id="global-settings" class="border-b border-gray-700 pb-4">
+                         <h4 class="text-lg font-semibold mb-2 text-pink-400">전체 설정</h4>
+                    </div>
+                    
+                    <!-- Per-Character Settings -->
+                    <div>
+                         <h4 class="text-lg font-semibold mb-2 text-cyan-400">글자별 상세 설정</h4>
+                         <div id="per-character-controls" class="space-y-4"></div>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h4 class="text-lg font-bold mb-3">네온 색상 팔레트</h4>
+                    <div id="color-palettes" class="color-palette grid grid-cols-4 gap-3"></div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        // --- Globals ---
+        const container = document.getElementById('canvas-container');
+        const imageLoader = document.getElementById('imageLoader');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const perCharacterControlsContainer = document.getElementById('per-character-controls');
+        const globalSettingsContainer = document.getElementById('global-settings');
+
+        const CHARACTERS = ['p', 'f', 'c', 't'];
+        const controls = {};
+        const valueDisplays = {};
+        
+        let uploadedImageDataUrl = null;
+
+        const PointVertexShader = `
+            attribute float size;
+            varying vec3 vColor;
+            void main() {
+                vColor = color; 
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_PointSize = size * (300.0 / -mvPosition.z);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+        const PointFragmentShader = `
+            uniform sampler2D pointTexture;
+            varying vec3 vColor;
+            void main() {
+                gl_FragColor = texture2D(pointTexture, gl_PointCoord);
+                if (gl_FragColor.a < 0.1) discard; 
+                gl_FragColor.rgb *= vColor;
+            }
+        `;
+
+        function buildControls() {
+            const globalControlsConfig = [
+                { id: 'edge-threshold', label: '네온 감도', min: 10, max: 250, value: 120, step: 1 },
+                { id: 'bloom-strength', label: '전체 광선 강도', min: 0, max: 3, value: 1.2, step: 0.1 },
+                { id: 'random-movement', label: '🌪️ 동적 움직임', min: 0, max: 200, value: 50, step: 1 },
+                { id: 'move-speed', label: '움직임 속도', min: 0, max: 1, value: 0.2, step: 0.01 },
+                { id: 'glitch-amount', label: '⚡ 글리치 효과', min: 0, max: 1, value: 0, step: 0.01 },
+                { id: 'x-axis-spread', label: '↔️ X축 퍼짐', min: 0, max: 1000, value: 0, step: 1 },
+                { id: 'y-axis-spread', label: '↕️ Y축 퍼짐', min: 0, max: 1000, value: 0, step: 1 },
+                { id: 'z-axis-spread', label: '↗️ Z축 퍼짐', min: 0, max: 1000, value: 0, step: 1 },
+            ];
+            globalControlsConfig.forEach(c => {
+                 globalSettingsContainer.innerHTML += `<div><label for="${c.id}" class="block mb-2 text-sm">${c.label}: <span id="${c.id}-value">${c.value}</span></label><input id="${c.id}" type="range" min="${c.min}" max="${c.max}" value="${c.value}" step="${c.step}"></div>`;
+            });
+            globalSettingsContainer.innerHTML += `<div><label for="blending-mode" class="block mb-2 text-sm">✨ 블렌딩 모드:</label><select id="blending-mode" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"><option value="AdditiveBlending">더하기 (밝게)</option><option value="NormalBlending">일반</option><option value="SubtractiveBlending">빼기 (어둡게)</option><option value="MultiplyBlending">곱하기 (어둡게)</option></select></div>`;
+            globalControlsConfig.forEach(c => { controls[c.id] = document.getElementById(c.id); valueDisplays[c.id] = document.getElementById(`${c.id}-value`); });
+            controls['blending-mode'] = document.getElementById('blending-mode');
+
+            const perCharControlsConfig = [
+                 { id: 'opacity', label: '광선 기여도', min:0, max:1, value:1, step:0.01},
+                 { id: 'size', label: '기본 글자 크기', min:1, max:30, value:8, step:0.5},
+                 { id: 'size-randomness', label: '크기 임의성', min:0, max:20, value:0, step:0.5},
+                 { id: 'hue-offset', label: '🎨 기본 Hue 오프셋', min:-0.5, max:0.5, value:0, step:0.01},
+                 { id: 'hue-randomness', label: 'Hue 임의성', min:0, max:0.5, value:0, step:0.01}
+            ];
+            CHARACTERS.forEach(char => {
+                const charSection = document.createElement('div');
+                charSection.className = 'p-3 border border-gray-700 rounded-lg';
+                charSection.innerHTML = `<h5 class="font-bold text-md text-yellow-400 mb-2">"${char}" 설정</h5>`;
+                perCharControlsConfig.forEach(c => {
+                    const controlId = `${char}-${c.id}`;
+                    charSection.innerHTML += `<div><label for="${controlId}" class="block mb-1 text-xs">${c.label}: <span id="${controlId}-value">${c.value}</span></label><input id="${controlId}" type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.value}"></div>`;
+                });
+                perCharacterControlsContainer.appendChild(charSection);
+            });
+            CHARACTERS.forEach(char => perCharControlsConfig.forEach(c => {
+                const id = `${char}-${c.id}`;
+                controls[id] = document.getElementById(id);
+                valueDisplays[id] = document.getElementById(`${id}-value`);
+            }));
+        }
+        buildControls();
+        
+        const palettesContainer = document.getElementById('color-palettes');
+        const colorPalettes = [
+            { name: 'Seoul Mix', primary: '#ff31a0' }, { name: 'Karaoke', primary: '#00ff7f' },
+            { name: 'Street Food', primary: '#ff8c00' }, { name: 'PC Bang', primary: '#00ffff' },
+            { name: 'Retro Game', primary: '#da70d6' }, { name: 'Hongdae Club', primary: '#ff1430' },
+            { name: 'Future Seoul', primary: '#fff000' }, { name: 'Rainy Night', primary: '#ffffff' }
+        ];
+        let activePalette = colorPalettes[0];
+        let originalImage = null;
+        let threeApp = null;
+        
+        function createTextTexture(text, size) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const font = `bold ${size}px sans-serif`;
+            context.font = font;
+            canvas.width = size;
+            canvas.height = size;
+            context.font = font;
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, size / 2, size / 2 + size * 0.1);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        class ThreeJSApp {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 2000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.composer = null; this.bloomPass = null; this.glitchPass = null;
+                this.orbitControls = null; this.textObjects = []; this.clock = new THREE.Clock();
+                this.init(); this.animate();
+            }
+
+            init() {
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                container.appendChild(this.renderer.domElement);
+                this.camera.position.z = 400;
+
+                this.orbitControls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.orbitControls.enableDamping = true;
+
+                const renderScene = new THREE.RenderPass(this.scene, this.camera);
+                this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+                this.glitchPass = new THREE.GlitchPass();
+                this.glitchPass.enabled = false;
+
+                this.composer = new THREE.EffectComposer(this.renderer);
+                this.composer.addPass(renderScene);
+                this.composer.addPass(this.bloomPass);
+                this.composer.addPass(this.glitchPass);
+            }
+            
+            updateText(edgeData) {
+                this.textObjects.forEach(obj => {
+                    this.scene.remove(obj);
+                    obj.geometry.dispose();
+                    if(obj.material.uniforms.pointTexture.value) obj.material.uniforms.pointTexture.value.dispose();
+                    obj.material.dispose();
+                });
+                this.textObjects = [];
+
+                const positions = CHARACTERS.map(() => []), data = edgeData.data, width = edgeData.width, height = edgeData.height;
+                let charIndex = 0;
+
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        if (data[y * width + x] > 0) {
+                            const group = charIndex % 4;
+                            positions[group].push(x - width / 2, -y + height / 2, 0);
+                            charIndex++;
+                        }
+                    }
+                }
+
+                CHARACTERS.forEach((char, i) => {
+                    if (positions[i].length === 0) return;
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions[i], 3));
+                    geometry.setAttribute('originalPosition', new THREE.Float32BufferAttribute(positions[i], 3));
+                    geometry.setAttribute('randomness', new THREE.Float32BufferAttribute(Array.from({ length: positions[i].length * 3 }, () => Math.random()), 3));
+                    
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: { pointTexture: { value: createTextTexture(char, 128) } },
+                        vertexShader: PointVertexShader,
+                        fragmentShader: PointFragmentShader,
+                        blending: this.getCurrentBlendingMode(),
+                        depthWrite: false,
+                        transparent: true,
+                        vertexColors: true
+                    });
+                    
+                    const points = new THREE.Points(geometry, material);
+                    points.userData.char = char;
+                    this.textObjects.push(points);
+                    this.scene.add(points);
+                });
+                this.updateAttributes();
+            }
+
+            updateAttributes(targetChar = null) {
+                const charsToUpdate = targetChar ? [targetChar] : CHARACTERS;
+                const baseColor = new THREE.Color(activePalette.primary);
+                const h_base = baseColor.getHSL({}).h;
+
+                this.textObjects.filter(obj => charsToUpdate.includes(obj.userData.char)).forEach(points => {
+                    const char = points.userData.char;
+                    const count = points.geometry.attributes.position.count;
+                    const colors = [], sizes = [];
+                    const hueOffset = parseFloat(controls[`${char}-hue-offset`].value);
+                    const hueRandom = parseFloat(controls[`${char}-hue-randomness`].value);
+                    const baseSize = parseFloat(controls[`${char}-size`].value);
+                    const sizeRandom = parseFloat(controls[`${char}-size-randomness`].value);
+                    points.material.blending = this.getCurrentBlendingMode();
+                    points.material.opacity = parseFloat(controls[`${char}-opacity`].value);
+
+                    for(let i = 0; i < count; i++) {
+                        const newColor = new THREE.Color();
+                        const finalHue = (h_base + hueOffset + (Math.random() - 0.5) * 2 * hueRandom + 1) % 1;
+                        newColor.setHSL(finalHue, 1.0, 0.6);
+                        colors.push(newColor.r, newColor.g, newColor.b);
+                        sizes.push(baseSize + (Math.random() - 0.5) * 2 * sizeRandom);
+                    }
+                    points.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                    points.geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+                    points.geometry.attributes.color.needsUpdate = true;
+                    points.geometry.attributes.size.needsUpdate = true;
+                });
+            }
+            
+            animate() {
+                requestAnimationFrame(this.animate.bind(this));
+                this.orbitControls.update();
+
+                const elapsedTime = this.clock.getElapsedTime();
+                const randomMovement = parseFloat(controls['random-movement'].value);
+                const moveSpeed = parseFloat(controls['move-speed'].value);
+                const spreadX = parseFloat(controls['x-axis-spread'].value);
+                const spreadY = parseFloat(controls['y-axis-spread'].value);
+                const spreadZ = parseFloat(controls['z-axis-spread'].value);
+
+                this.textObjects.forEach(points => {
+                    const positions = points.geometry.attributes.position;
+                    const originalPos = points.geometry.attributes.originalPosition;
+                    const randoms = points.geometry.attributes.randomness;
+
+                    for (let i = 0; i < positions.count; i++) {
+                        const ox = originalPos.getX(i), oy = originalPos.getY(i), oz = originalPos.getZ(i);
+                        const randX = randoms.getX(i), randY = randoms.getY(i), randZ = randoms.getZ(i);
+                        
+                        const staticOffsetX = (randX - 0.5) * spreadX;
+                        const staticOffsetY = (randY - 0.5) * spreadY;
+                        const staticOffsetZ = (randZ - 0.5) * spreadZ;
+                        
+                        const time = elapsedTime * moveSpeed;
+                        const dynamicCycle = Math.sin(time + randX * Math.PI * 2);
+                        const dynamicOffset = dynamicCycle * randomMovement;
+
+                        positions.setXYZ(i, ox + staticOffsetX + dynamicOffset * (randX-0.5), oy + staticOffsetY + dynamicOffset* (randY-0.5), oz + staticOffsetZ + dynamicOffset * (randZ-0.5));
+                    }
+                    positions.needsUpdate = true;
+                });
+                
+                const glitchAmount = parseFloat(controls['glitch-amount'].value);
+                if (glitchAmount > 0 && Math.random() < glitchAmount * 0.05) {
+                    this.glitchPass.enabled = true;
+                    setTimeout(() => this.glitchPass.enabled = false, 100);
+                } else if (glitchAmount === 0) {
+                    this.glitchPass.enabled = false;
+                }
+                
+                this.bloomPass.strength = parseFloat(controls['bloom-strength'].value);
+                this.composer.render();
+            }
+            
+            getCurrentBlendingMode() {
+                return THREE[controls['blending-mode'].value] || THREE.AdditiveBlending;
+            }
+        }
+        
+        function initialize() {
+            threeApp = new ThreeJSApp();
+            createColorPalettes(); 
+            addEventListeners();
+            applyPresetSettings();
+        }
+
+        function createColorPalettes() {
+            palettesContainer.innerHTML = '';
+            colorPalettes.forEach((palette, index) => {
+                const button = document.createElement('button');
+                button.className = 'w-10 h-10 rounded-full border-2 border-gray-500 focus:outline-none transition-all duration-200';
+                button.dataset.name = palette.name;
+                if (index === 0) button.classList.add('active', 'ring-2', 'ring-offset-2', 'ring-offset-gray-900', 'ring-pink-500');
+                button.style.background = palette.primary;
+                button.onclick = () => {
+                    activePalette = palette;
+                    if(threeApp && threeApp.textObjects.length > 0) threeApp.updateAttributes();
+                    document.querySelectorAll('#color-palettes button').forEach(b => b.classList.remove('active', 'ring-2', 'ring-offset-2', 'ring-offset-gray-900', 'ring-pink-500'));
+                    button.classList.add('active', 'ring-2', 'ring-offset-2', 'ring-offset-gray-900', 'ring-pink-500');
+                };
+                palettesContainer.appendChild(button);
+            });
+        }
+        
+        function addEventListeners() {
+            imageLoader.addEventListener('change', handleImageUpload);
+            window.addEventListener('resize', () => { if(threeApp) { threeApp.camera.aspect = container.clientWidth / container.clientHeight; threeApp.camera.updateProjectionMatrix(); threeApp.renderer.setSize(container.clientWidth, container.clientHeight); threeApp.composer.setSize(container.clientWidth, container.clientHeight); } }, false);
+            for (const key in controls) { controls[key].addEventListener('input', handleControlChange); }
+            container.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); container.style.backgroundColor = '#1a1a2e'; });
+            container.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); container.style.backgroundColor = 'transparent'; });
+            container.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); container.style.backgroundColor = 'transparent'; const files = e.dataTransfer.files; if (files.length > 0) processFile(files[0]); });
+            document.getElementById('download-button').addEventListener('click', handleDownload);
+        }
+
+        function handleDownload() {
+            let htmlContent = document.documentElement.outerHTML;
+
+            // Clear any existing preset data to download a clean version
+            htmlContent = htmlContent.replace(
+                /<script id="preset-data" type="application\/json">[\s\S]*?<\/script>/,
+                '<script id="preset-data" type="application/json">\n        null\n    <\/script>'
+            );
+        
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'cyberpunk-neon-app.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        }
+        
+        function applyPresetSettings() {
+            const presetDataElement = document.getElementById('preset-data');
+            if (presetDataElement && presetDataElement.textContent.trim() !== 'null') {
+                try {
+                    const presetData = JSON.parse(presetDataElement.textContent);
+                    const { imageDataUrl, controls: presetControls, activePaletteName } = presetData;
+
+                    for (const key in presetControls) {
+                        if (controls[key]) {
+                            controls[key].value = presetControls[key];
+                            if (valueDisplays[key]) valueDisplays[key].textContent = presetControls[key];
+                        }
+                    }
+                    
+                    const palette = colorPalettes.find(p => p.name === activePaletteName) || colorPalettes[0];
+                    activePalette = palette;
+                    document.querySelectorAll('#color-palettes button').forEach(btn => {
+                       const isActive = btn.dataset.name === activePaletteName;
+                       btn.classList.toggle('active', isActive);
+                       btn.classList.toggle('ring-2', isActive);
+                       btn.classList.toggle('ring-offset-2', isActive);
+                       btn.classList.toggle('ring-offset-gray-900', isActive);
+                       btn.classList.toggle('ring-pink-500', isActive);
+                    });
+
+                    if (imageDataUrl) {
+                        uploadedImageDataUrl = imageDataUrl;
+                        const img = new Image();
+                        img.onload = () => { originalImage = img; uploadPrompt.style.display = 'none'; processImage(); };
+                        img.src = imageDataUrl;
+                    }
+                } catch (e) {
+                    console.error("저장된 설정를 불러오는데 실패했습니다:", e);
+                }
+            }
+        }
+
+        function handleControlChange(e) {
+            const id = e.target.id;
+            if(valueDisplays[id]) valueDisplays[id].textContent = e.target.value;
+            if (id === 'edge-threshold' || id.endsWith('-spread')) { 
+                if (originalImage) processImage(); 
+                return;
+            }
+            if (id === 'blending-mode') { if(threeApp) threeApp.updateAttributes(); return; }
+
+            const [char] = id.split('-');
+            if (CHARACTERS.includes(char) && threeApp.textObjects.length > 0) {
+                threeApp.updateAttributes(char);
+            }
+        }
+        
+        function handleImageUpload(e) { if (e.target.files.length > 0) processFile(e.target.files[0]); }
+        
+        function processFile(file) {
+             const reader = new FileReader();
+            reader.onload = (event) => { 
+                uploadedImageDataUrl = event.target.result;
+                const img = new Image(); 
+                img.onload = () => { originalImage = img; uploadPrompt.style.display = 'none'; processImage(); }; 
+                img.src = event.target.result; 
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function processImage() {
+            if (!originalImage) return;
+            const tempCanvas = document.createElement('canvas');
+            const MAX_WIDTH = 400; const scale = MAX_WIDTH / originalImage.width;
+            tempCanvas.width = MAX_WIDTH; tempCanvas.height = originalImage.height * scale;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(originalImage, 0, 0, tempCanvas.width, tempCanvas.height);
+            const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const grayscaleData = toGrayscale(imageData);
+            const edgeData = detectEdges(grayscaleData, parseInt(controls['edge-threshold'].value));
+            threeApp.updateText(edgeData);
+        }
+
+        function toGrayscale(imageData) {
+            const data = imageData.data, grayData = new Uint8ClampedArray(imageData.width * imageData.height);
+            for (let i = 0; i < data.length; i += 4) { grayData[i / 4] = 0.2126 * data[i] + 0.7152 * data[i+1] + 0.0722 * data[i+2]; }
+            return { data: grayData, width: imageData.width, height: imageData.height };
+        }
+
+        function detectEdges(grayscaleData, threshold) {
+            const width = grayscaleData.width, height = grayscaleData.height;
+            const sobelData = new Uint8ClampedArray(grayscaleData.data.length);
+            const Gx = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], Gy = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let sumX = 0, sumY = 0;
+                    for (let i = -1; i <= 1; i++) { for (let j = -1; j <= 1; j++) {
+                        const pixel = grayscaleData.data[(y + i) * width + (x + j)];
+                        sumX += pixel * Gx[i + 1][j + 1]; sumY += pixel * Gy[i + 1][j + 1];
+                    }}
+                    sobelData[y * width + x] = Math.sqrt(sumX*sumX + sumY*sumY) > threshold ? 255 : 0;
+                }
+            }
+            return { data: sobelData, width, height };
+        }
+        
+        initialize();
+    </script>
+</body>
+</html>
